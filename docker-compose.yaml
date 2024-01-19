@@ -1,0 +1,131 @@
+services:
+  # Load-Testing Tool Service
+  grafana-k6:
+    container_name: grafana-k6
+    # build:
+    #   context: .
+    #   dockerfile: $PWD/grafana-k6/Dockerfile
+    image: wootechspace/grafana-k6:0.4.2
+    # image: grafana-k6-test
+    pull_policy: missing
+    # init: true
+    # tty: true
+    # restart: unless-stopped
+    # command: [ "run", "scripts.js", "--verbose" ]
+    environment:
+      PUID: ${GF_K6_PUID}
+      PGID: ${GF_K6_PGID}
+      TZ: ${GF_K6_TZ}
+      K6_OUT: ${GF_K6_OUT}
+      K6_INFLUXDB_ADDR: ${GF_K6_INFLUXDB_ADDR}
+      K6_INFLUXDB_ORGANIZATION: ${GF_K6_INFLUXDB_ORGANIZATION}
+      K6_INFLUXDB_BUCKET: ${GF_K6_INFLUXDB_BUCKET}
+      K6_INFLUXDB_INSECURE: ${GF_K6_INFLUXDB_INSECURE}
+      K6_INFLUXDB_TOKEN: ${GF_K6_INFLUXDB_TOKEN}
+    ports:
+      - "6565:6565"
+    networks:
+      - grafana-k6
+    volumes:
+      - $PWD/grafana-k6/scripts:/home/k6:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+        restart: true
+      grafana-dashboard:
+        condition: service_healthy
+        restart: true
+
+  # Time-Series Database Service
+  influxdb:
+    container_name: influxdb
+    # build:
+    #   context: .
+    #   dockerfile: $PWD/influxdb/Dockerfile
+    image: influxdb:2.7.5
+    pull_policy: missing
+    init: true
+    tty: true
+    restart: unless-stopped
+    # working_dir: /var/www/html
+    # command: [ "bundle", "exec", "thin", "-p", "3000" ]
+    environment:
+      PUID: ${INFLUXDB_PUID}
+      PGID: ${INFLUXDB_PGID}
+      TZ: ${INFLUXDB_TZ}
+      INFLUXDB_DB: ${INFLUXDB_DB}
+      DOCKER_INFLUXDB_INIT_MODE: ${INFLUXDB_INIT_MODE}
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_INIT_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_INIT_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_INIT_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_INIT_BUCKET}
+      DOCKER_INFLUXDB_INIT_RETENTION: ${INFLUXDB_INIT_RETENTION}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN}
+    ports:
+      - "8086:8086"
+    networks:
+      - grafana-k6
+      - influxdb
+      - grafana-dashboard
+    volumes:
+      - $PWD/influxdb/data:/var/lib/influxdb2:rw
+      # - $PWD/config:/etc/influxdb2:ro
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 5s
+      retries: 3
+
+  grafana-dashboard:
+    container_name: grafana-dashboard
+    # build:
+    #   context: .
+    #   dockerfile: $PWD/grafana-dashboard/Dockerfile
+    image: grafana/grafana:10.2.3-ubuntu
+    pull_policy: missing
+    init: true
+    tty: true
+    restart: unless-stopped
+    # working_dir: /var/www/html
+    # command: [ "bundle", "exec", "thin", "-p", "3000" ]
+    environment:
+      PUID: ${GF_PUID}
+      PGID: ${GF_PGID}
+      TZ: ${GF_TZ}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: ${GF_AUTH_ANONYMOUS_ORG_ROLE}
+      GF_AUTH_ANONYMOUS_ENABLED: ${GF_AUTH_ANONYMOUS_ENABLED}
+      GF_AUTH_BASIC_ENABLED: ${GF_AUTH_BASIC_ENABLED}
+    ports:
+      - "3000:3000"
+    networks:
+      - grafana-dashboard
+      - influxdb
+    volumes:
+      - $PWD/grafana-dashboard/data:/etc/grafana/provisioning/:rw
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 5s
+      retries: 3
+    depends_on:
+      influxdb:
+        condition: service_healthy
+        restart: true
+
+networks:
+  grafana-k6:
+    driver: bridge
+  influxdb:
+    driver: bridge
+  grafana-dashboard:
+    driver: bridge
+
+# volumes:
+#   grafana-k6:
+#     driver: local
+#   influxdb:
+#     driver: local
