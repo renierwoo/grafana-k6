@@ -1,2 +1,3 @@
 # grafana-k6
-A modern load testing tool, using Go and JavaScript 
+
+A modern load testing tool, using Go and JavaScript
