@@ -6,10 +6,9 @@ services:
     #   context: .
     #   dockerfile: $PWD/grafana-k6/Dockerfile
     image: wootechspace/grafana-k6:0.4.2
-    # image: grafana-k6-test
     pull_policy: missing
-    # init: true
-    # tty: true
+    init: true
+    tty: true
     # restart: unless-stopped
     # command: [ "run", "scripts.js", "--verbose" ]
     environment:
